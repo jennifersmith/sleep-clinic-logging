@@ -1,2 +1,1 @@
-cat data/taplog/*.csv | head -1  > data/taplog.csv
-cat data/taplog/*.csv | grep '^"' | sort -u >> data/taplog.csv
+csvstack data/taplog/*.csv | csvjson | jq ".[] | {timestamp, category:.cat1}" -c | sort -u > data/taplog.jsonl
