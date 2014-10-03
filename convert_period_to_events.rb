@@ -12,8 +12,8 @@ CSV($stdin, headers:true, header_converters:[:symbol]) do |csv_in|
     start_timestamp = start_timestamp.prev_day if start_timestamp.hour > 12
     
     [
-     {:timestamp => start_timestamp.iso8601(3), :category=> "Sleep Start", :source => "fitbit"},
-     {:timestamp => end_timestamp.iso8601(3), :category=> "Sleep End", :source => "fitbit"},
+     {:timestamp => start_timestamp.iso8601(3), :value=> "Sleep Start", :source => "com.fitbit", :eventType=>"manuallyExtracted"},
+     {:timestamp => end_timestamp.iso8601(3), :value=> "Sleep End", :source => "com.fitbit", :eventType => "manuallyExtracted"}
      ]
   end
   
