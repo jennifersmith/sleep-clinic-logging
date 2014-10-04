@@ -27,3 +27,5 @@ fi
 
 
 psql sleepdiary -c "create table sleepwake as (select occurredat as from, lead(occurredat, 1) OVER (ORDER BY occurredat) AS to, newstate as state from statechanges order by occurredat);"
+
+psql sleepdiary -c "select row_to_json(sleepwake) from sleepwake order by sleepwake.from" -t | jq -s . > data/sleepwake.json
