@@ -1,6 +1,15 @@
 
+
+
 function draw(){
 
+
+// also offsets so midnight is 0, noon -12
+    var hourOfDayAsDecimal = function (d){
+        d.fromHour = (d.from - d.fromDay) / (60 * 60 * 1000);
+        d.toHour = (d.to - d.fromDay) / (60 * 60 * 1000);
+        return d;
+    }
 
     d3.json("/data/sleepwake.json",
             function(error, data) {
@@ -9,14 +18,52 @@ function draw(){
                 height = 3500 - margin.top - margin.bottom;
                 
                 var timesScale = d3.scale.ordinal().domain(d3.range(12,24).concat(d3.range(0,12))).rangeBands([0, width]);
-                timesScale = d3.scale.linear().domain([-12,12]).range([0, width-margin.right]);
+                timesScale = d3.scale.linear().domain([0,24]).range([0, width-margin.right]);
 
-                var days = data.map(function(d){return d3.time.day.floor(new Date(d.from))});
-                var dateRange = d3.extent(days);
-                var dayRange = d3.time.days(dateRange[0], dateRange[1]);
+                var data = data.map(function(d,i){
+                    d.i = i;
+                    d.from = new Date(d.from);
+                    d.to = new Date(d.to);
+                    
+                    d.fromDay = d3.time.hour.offset( d3.time.day.floor(d.from), -12);
+                    d.toDay =  d3.time.hour.offset( d3.time.day.floor(d.to), -12);
+                    d.fromAfterNoon = d.from> d3.time.hour.offset(d3.time.day.floor(d.from), 12);
+                    d.toAfterNoon = d.to> d3.time.hour.offset(d3.time.day.floor(d.to), 12);
+                    if (d.fromAfterNoon){
+                        d.fromDay =  d3.time.hour.offset(d.fromDay,24);
+                    }
+                    if (d.toAfterNoon){
+                        d.toDay =  d3.time.hour.offset(d.toDay,24);
+                    }
 
+
+
+                    if ( d.fromDay < d.toDay){
+                        var firstPart = Object.create(d);
+                        var secondPart = Object.create(d);
+                        secondPart.fromDay =  secondPart.toDay;
+                        secondPart.from = secondPart.toDay;
+
+                        firstPart.to = d.toDay;
+                        
+                        return [firstPart, secondPart];
+                    }
+                    else{
+                            return [d];
+                    }
+
+                });
+                data = [].concat.apply([],data).map(hourOfDayAsDecimal); 
+                var dateRange = d3.extent(data,function(d){return d.toDay});
+                var dayRange = d3.time.hours(dateRange[0], dateRange[1], 12);
+                dayRange = dayRange.filter(function(d,i){return !(i%2);});
+
+window.dayRange = dayRange;
+window.data = data;
                 var daysScale = d3.scale.ordinal().domain(dayRange).rangeBands([0, height]);                
                 
+                
+
                 var drawCanvas = function(){
                     var svg = d3.select("#chart").append("svg")
                         .attr("width", width + margin.left + margin.right)
@@ -38,7 +85,7 @@ function draw(){
                     var xAxis = d3.svg.axis()
                         .orient("top")
                         .scale(timesScale)
-                        .tickFormat(function(x) { return (x + 24) %24})
+                        .tickFormat(function(x) { return  (x + 12) %24+ ":00"})
 
                     window.xScale = timesScale;
                         
@@ -78,9 +125,42 @@ function draw(){
 
 
                     };
+                var drawData = function(svg){
+
+                    svg.selectAll(".sleepWakeData")
+                        .data(data)
+                        .enter().append("rect")
+                        .attr("y", function(d){
+                            return daysScale(d.fromDay);})
+                        .attr("x", function(d) { return timesScale(d.fromHour);})
+                        .attr("width", function(d) { 
+                            return timesScale(d.toHour -d.fromHour);}) 
+                        .attr("height",daysScale.rangeBand()) 
+                        .style("stroke", "green")
+                        .style("fill", "pink")
+                        .attr("height", 20);
+                    svg.selectAll(".sleepWakeDataLabels")
+                        .data(data)
+                        .enter().append("text")
+                        .attr("y", function(d){
+                            return (daysScale(d.fromDay)|0) + 14.5;})
+                        .attr("x", function(d) { return timesScale(d.fromHour);})
+                        .attr("height",daysScale.rangeBand()) 
+                        .style("stroke", "green")
+                        .style("fill", "pink")
+                        .attr("height", 20)
+                        .text(function(d){return d.state +  " " +  d.i;});
+
+                    var oneData = data[15];
+window.daysScale = daysScale;
+
+                    window.oneData = oneData;
+                }
                 var svg = drawCanvas();
                 drawAxes(svg);
                 drawGrid(svg);
+
+                drawData(svg);
     });
     var drawCrap = function (){
       var margin = { top: 50, right: 0, bottom: 100, left: 100 },
@@ -94,7 +174,6 @@ function draw(){
           times = ["1a", "2a", "3a", "4a", "5a", "6a", "7a", "8a", "9a", "10a", "11a", "12a", "1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p", "10p", "11p", "12p"];
           timesScale = d3.scale.ordinal().domain(d3.range(12,24).concat(d3.range(0,12))).rangeBands([0, width]);
           daysScale = d3.scale.ordinal().domain(d3.range(0,20)).rangeBands([0, height]);
-console.log(times);
 
       d3.json("/data/sleepwake.json",
         function(error, data) {
